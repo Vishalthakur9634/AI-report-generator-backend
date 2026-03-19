@@ -14,11 +14,16 @@ load_dotenv()
 app = FastAPI(title="AI Radiology Report Generator")
 
 HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-# THE ABSOLUTE MOST PERMISSIVE CORS (Atomic Fix)
+# THE ABSOLUTE MOST PERMISSIVE CORS (Hardcoded Fix)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[
+        "https://ai-medical-report-generator.netlify.app",
+        "https://ai-medical-report-generator.netlify.app/",
+        "http://localhost:5173",
+        "http://localhost:3000"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
