@@ -27,6 +27,10 @@ app.add_middleware(
 async def health_check():
     return {"status": "online", "message": "AI Radiology Backend is Running"}
 
+@app.get("/api/test")
+async def api_test():
+    return {"status": "ok", "message": "The /api/test path works!"}
+
 @app.get("/api/health")
 async def api_health():
     return {"status": "ok"}
