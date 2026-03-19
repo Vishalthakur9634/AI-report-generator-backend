@@ -14,7 +14,7 @@ load_dotenv()
 app = FastAPI(title="AI Radiology Report Generator")
 
 HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-# Highly Compatible Production CORS
+# THE ABSOLUTE MOST PERMISSIVE CORS (Atomic Fix)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,6 +22,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+async def health_check():
+    return {"status": "online", "message": "Backend is working!"}
+
+@app.get("/api/health")
+async def api_health():
+    return {"status": "ok", "path": "/api/health"}
 
 class ReportRequest(BaseModel):
     transcript: str
