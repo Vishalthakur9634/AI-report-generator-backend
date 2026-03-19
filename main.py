@@ -80,48 +80,50 @@ async def generate_report(request: ReportRequest):
         
         modality = request.modality.upper()
         
-        # Modality-Specific Prompt Templates
+        # Modality-Specific Prompt Templates (Refined for Professional Quality)
         MODALITY_RULES = {
-            "USG": "Focus on organ morphology, echotexture (hyperechoic/hypoechoic), and echogenicity. Standard sections: Liver, Gallbladder, Pancreas, Spleen, Kidneys, Bladder, etc.",
-            "X-RAY": "Focus on bone alignment, cortex integrity, joint spaces, lung parenchyma, pleural spaces, and cardiac silhouette. Use terminology like 'radiopacity' and 'radiolucency'.",
-            "CT": "Focus on Hounsfield Units (density), contrast enhancement patterns, and multi-planar anatomy. Standard sections: Head/Chest/Abdomen/Pelvis anatomy as per study.",
-            "MRI": "Focus on signal intensity (T1/T2/FLAIR/DWI), soft tissue detail, and ligamentous/neural integrity. Standard sections: Sequences performed, findings per sequence/region.",
-            "BLOOD TEST": "Focus on laboratory parameters (CBC, LFT, KFT, etc.). Format as a table or structured list with Reference Ranges if provided. Flag abnormal values as High/Low.",
-            "DOPPLER": "Focus on vascular flow dynamics, resistivity indices (RI), peak systolic velocities (PSV), and spectral waveforms. Mention arterial/venous patency."
+            "USG": "Mimic professional radiology style: Use terms like 'coarsened echotexture', 'hepatomegaly', 'calculi', 'calyceal dilatation', 'septated collection'. Always start organ findings with the <b>Organ Name</b> in bold. Include dimensions (~ 0.0 cm) if mentioned. Standard sections: Liver, Gallbladder, Pancreas, Spleen, Kidneys, Bladder, etc.",
+            "X-RAY": "Focus on bone alignment, cortex integrity, joint spaces, lung parenchyma, pleural spaces, and cardiac silhouette. Use terminology like 'radiopacity' and 'radiolucency'. Use <b>Organ/Region</b> format.",
+            "CT": "Focus on Hounsfield Units (density), contrast enhancement patterns, and multi-planar anatomy. Describe specific phase enhancement if applicable. Use <b>Region</b> format.",
+            "MRI": "Focus on signal intensity (T1/T2/FLAIR/DWI), soft tissue detail, and neural integrity. Use <b>Sequence/Region</b> format.",
+            "BLOOD TEST": "Focus on parameters (CBC, LFT, KFT). Format as a structured list with <b>Parameter</b>: Value (Range). Highlight abnormal values.",
+            "DOPPLER": "Focus on flow dynamics, resistivity indices (RI), PSV, and spectral waveforms. Mention arterial/venous patency. Use <b>Vessel</b> format."
         }
         
-        specific_instructions = MODALITY_RULES.get(modality, "Generate a professional radiology report as per standard protocols.")
+        specific_instructions = MODALITY_RULES.get(modality, "Generate a professional diagnostic report.")
 
         system_prompt = f"""
-        You are a highly specialized AI Radiology and Pathology assistant. Your core mission is to transform raw clinical dictation into professional, diagnostic-grade medical reports for the modality: {modality}.
-
-        ### MODALITY-SPECIFIC FOCUS:
+        You are a Senior Radiologist AI assistant. Your task is to convert raw clinical notes or audio transcripts into a formal, diagnostic-grade medical report for: {modality}.
+        
+        REFERENCE STYLE (Mimic this EXACTLY):
+        - Style: "The <b>Liver</b> is moderately enlarged in size (~ 18.9 cm) with coarsening of echotexture..."
+        - Detail: Mention specific grades (e.g., Grade II/III fatty changes), measurements, and 'No evidence of' for negatives.
+        - Clarity: Ensure findings are distinct and descriptive.
+        
+        ### MODALITY-SPECIFIC RULES:
         {specific_instructions}
 
-        ### DOCUMENT STRUCTURE & STYLE:
-        1. **Tone**: Use formal, objective, and precise medical terminology.
-        2. **Organ/System Organization**: findings should be grouped logically.
-        3. **Expansion**: Convert shorthand (e.g., 'Lung clear') into professional text (e.g., 'The lung fields are clear and well-expanded. No focal consolidations or pleural effusions are seen.').
+        ### DOCUMENT STRUCTURE:
+        1. **Tone**: Objective, formal, and authoritative.
+        2. **Formatting**: Use HTML for `reportText`. 
+           - Start each finding with: `<p>The <b>Organ Name</b> is ...</p>` or `<b>Organ Name</b>: ...`
+           - Use `<p>` tags for each distinct section.
+        3. **Expansion**: Expand shorthand (e.g., 'liver big' -> 'The <b>Liver</b> is moderately enlarged in size, showing features of hepatomegaly.').
+        4. **Impression**: Mandatory concise, numbered list of the most significant findings. Include clinical recommendations (Adv:) if appropriate.
 
-        ### TECHNICAL CONSTRAINTS:
-        - **NEVER** hallucinate findings.
-        - **Formatting**: Use HTML for `reportText`. Use `<b>` for organ/test names and `<p>` for paragraphs.
-        - **Impression**: Concise, numbered list.
-
-        ### JSON OUTPUT SCHEMA:
-        Respond ONLY with a JSON object in this exact format:
+        ### JSON RESPONSE SCHEMA (Respond ONLY with JSON):
         {{
             "patientData": {{ 
                 "patient_name": "Full Name",
-                "age": "Age",
+                "age": "e.g., 36 Yrs",
                 "sex": "Male/Female",
-                "ref_doctor": "Referring Physician",
-                "date": "Report Date",
-                "uhid": "UHID (if found)",
-                "study": "Full Name of Study (e.g., {modality} WHOLE ABDOMEN)"
+                "ref_doctor": "Referring Physician Name",
+                "date": "Date of Report",
+                "uhid": "UHID number",
+                "study": "{modality} WHOLE ABDOMEN" (or specific study mentioned)
             }},
-            "reportText": "<p><b>ORGAN/TEST:</b> Findings...</p>",
-            "impression": "1. Main finding.\\n2. Secondary finding."
+            "reportText": "<p>The <b>Liver</b> is...</p><p>The <b>Gall Bladder</b> is...</p>",
+            "impression": "1. Main Diagnostic Finding.\\n2. Secondary Finding."
         }}
         """
 
