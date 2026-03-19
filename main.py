@@ -11,19 +11,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI(title="AI Radiology Report Generator")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
 
-HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-# THE ABSOLUTE MOST PERMISSIVE CORS (Hardcoded Fix)
+# Production CORS Configuration (Robust)
+origins = ["http://localhost:5173", "http://localhost:3000"]
+if FRONTEND_URL and FRONTEND_URL != "*":
+    clean_url = FRONTEND_URL.strip().rstrip("/")
+    origins.append(clean_url)
+    origins.append(clean_url.lower()) # Case-insensitive handle
+else:
+    origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://ai-medical-report-generator.netlify.app",
-        "https://ai-medical-report-generator.netlify.app/",
-        "http://localhost:5173",
-        "http://localhost:3000"
-    ],
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_credentials=True if "*" not in origins else False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
