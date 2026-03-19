@@ -18,15 +18,20 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
 
 # Secure CORS Configuration
 origins = []
+allow_all = False
+
 if FRONTEND_URL and FRONTEND_URL != "*":
     origins.append(FRONTEND_URL.rstrip("/"))
+    origins.append("http://localhost:5173")
+    origins.append("http://localhost:3000")
 else:
-    origins.append("*")
+    origins = ["*"]
+    allow_all = True
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=not allow_all, # Must be False if origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
