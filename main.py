@@ -25,11 +25,11 @@ app.add_middleware(
 
 @app.get("/")
 async def health_check():
-    return {"status": "online", "message": "Backend is working!"}
+    return {"status": "online", "message": "AI Radiology Backend is Running"}
 
 @app.get("/api/health")
 async def api_health():
-    return {"status": "ok", "path": "/api/health"}
+    return {"status": "ok"}
 
 class ReportRequest(BaseModel):
     transcript: str
@@ -54,10 +54,6 @@ def extract_json_from_text(text: str) -> dict:
         return json.loads(text)
     except:
         return None
-
-@app.get("/")
-async def root():
-    return {"status": "AI Radiology Report Generator Backend is Running"}
 
 @app.post("/api/generate_report", response_model=ReportResponse)
 async def generate_report(request: ReportRequest):
