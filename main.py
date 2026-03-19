@@ -6,11 +6,6 @@ import uvicorn
 import os
 import json
 import re
-
-from pydantic import BaseModel
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 from huggingface_hub import InferenceClient
 from dotenv import load_dotenv
 
@@ -18,9 +13,19 @@ load_dotenv()
 
 app = FastAPI(title="AI Radiology Report Generator")
 
+HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
+
+# Secure CORS Configuration
+origins = []
+if FRONTEND_URL and FRONTEND_URL != "*":
+    origins.append(FRONTEND_URL.rstrip("/"))
+else:
+    origins.append("*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +54,10 @@ def extract_json_from_text(text: str) -> dict:
         return json.loads(text)
     except:
         return None
+
+@app.get("/")
+async def root():
+    return {"status": "AI Radiology Report Generator Backend is Running"}
 
 @app.post("/api/generate_report", response_model=ReportResponse)
 async def generate_report(request: ReportRequest):
