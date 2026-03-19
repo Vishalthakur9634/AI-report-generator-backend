@@ -14,24 +14,28 @@ load_dotenv()
 app = FastAPI(title="AI Radiology Report Generator")
 
 HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+# Production CORS Configuration
 FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
 
-# Secure CORS Configuration
-origins = []
-allow_all = False
+# Construct allowed origins list
+origins = ["http://localhost:5173", "http://localhost:3000"]
 
 if FRONTEND_URL and FRONTEND_URL != "*":
-    origins.append(FRONTEND_URL.rstrip("/"))
-    origins.append("http://localhost:5173")
-    origins.append("http://localhost:3000")
+    # Add both original and lowercase to handle case-sensitivity issues
+    clean_url = FRONTEND_URL.strip().rstrip("/")
+    if clean_url not in origins:
+        origins.append(clean_url)
+    if clean_url.lower() not in origins:
+        origins.append(clean_url.lower())
 else:
     origins = ["*"]
-    allow_all = True
+
+print(f"DEBUG: Allowed CORS Origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=not allow_all, # Must be False if origins=["*"]
+    allow_credentials=True if "*" not in origins else False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
