@@ -11,6 +11,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+app = FastAPI(title="AI Radiology Report Generator")
+
+HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
 
 # Production CORS Configuration (Robust)
@@ -51,7 +54,6 @@ class ReportResponse(BaseModel):
     reportText: str
     impression: str
 
-HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 repo_id = "Qwen/Qwen2.5-72B-Instruct"
 
 def extract_json_from_text(text: str) -> dict:
