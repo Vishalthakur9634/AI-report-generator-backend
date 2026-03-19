@@ -80,50 +80,45 @@ async def generate_report(request: ReportRequest):
         
         modality = request.modality.upper()
         
-        # Modality-Specific Prompt Templates (Refined for Professional Quality)
+        # Modality-Specific Prompt Templates (ULTIMATE MEDICAL QUALITY)
         MODALITY_RULES = {
-            "USG": "Mimic professional radiology style: Use terms like 'coarsened echotexture', 'hepatomegaly', 'calculi', 'calyceal dilatation', 'septated collection'. Always start organ findings with the <b>Organ Name</b> in bold. Include dimensions (~ 0.0 cm) if mentioned. Standard sections: Liver, Gallbladder, Pancreas, Spleen, Kidneys, Bladder, etc.",
-            "X-RAY": "Focus on bone alignment, cortex integrity, joint spaces, lung parenchyma, pleural spaces, and cardiac silhouette. Use terminology like 'radiopacity' and 'radiolucency'. Use <b>Organ/Region</b> format.",
-            "CT": "Focus on Hounsfield Units (density), contrast enhancement patterns, and multi-planar anatomy. Describe specific phase enhancement if applicable. Use <b>Region</b> format.",
-            "MRI": "Focus on signal intensity (T1/T2/FLAIR/DWI), soft tissue detail, and neural integrity. Use <b>Sequence/Region</b> format.",
-            "BLOOD TEST": "Focus on parameters (CBC, LFT, KFT). Format as a structured list with <b>Parameter</b>: Value (Range). Highlight abnormal values.",
-            "DOPPLER": "Focus on flow dynamics, resistivity indices (RI), PSV, and spectral waveforms. Mention arterial/venous patency. Use <b>Vessel</b> format."
+            "USG": "Mandatory Detail: Use 'coarsened echotexture', 'hepatomegaly', 'calculi', 'calyceal dilatation', 'septated collection'. Start every organ with <b>Organ Name</b>. Describe size, echogenicity, morphology, and negatives (e.g., 'no focal lesion seen').",
+            "X-RAY": "Describe bone alignment, cortex integrity, joint spaces, lung parenchyma, pleural spaces, and cardiac silhouette. Use 'radiopacity', 'radiolucency', 'costophrenic angles are clear'.",
+            "CT": "Detailed Hounsfield Units, contrast enhancement phases, and multi-planar relationship. Use <b>Region</b> format with verbose descriptive anatomy.",
+            "MRI": "Signal intensity (T1/T2/FLAIR/STIR/DWI), soft tissue contrast, neural/ligamentous integrity. Detailed sequence-by-sequence analysis.",
+            "BLOOD TEST": "Structured table/list. <b>Parameter</b>: Value (Range) [FLAG]. Interpretation of trends.",
+            "DOPPLER": "Flow dynamics, RI, PSV, waveforms, arterial/venous patency. Describe spectral broadning or turbulence if applicable."
         }
         
-        specific_instructions = MODALITY_RULES.get(modality, "Generate a professional diagnostic report.")
+        specific_instructions = MODALITY_RULES.get(modality, "Generate a world-class professional diagnostic report.")
 
         system_prompt = f"""
-        You are a Senior Radiologist AI assistant. Your task is to convert raw clinical notes or audio transcripts into a formal, diagnostic-grade medical report for: {modality}.
+        You are a World-Class Senior Radiologist with 20+ years of experience. Your task is to transform raw clinical notes/audio into a DEEP, DETAILED, and HYPER-PROFESSIONAL diagnostic report for: {modality}.
         
-        REFERENCE STYLE (Mimic this EXACTLY):
-        - Style: "The <b>Liver</b> is moderately enlarged in size (~ 18.9 cm) with coarsening of echotexture..."
-        - Detail: Mention specific grades (e.g., Grade II/III fatty changes), measurements, and 'No evidence of' for negatives.
-        - Clarity: Ensure findings are distinct and descriptive.
-        
-        ### MODALITY-SPECIFIC RULES:
-        {specific_instructions}
+        ### 🌟 GOLD STANDARD EXAMPLE (Follow this Level of Detail):
+        "The <b>Liver</b> is moderately enlarged in size (~ 18.9 cm) with coarsening of echotexture and shows increased parenchymal echogenicity consistent with grade II / III fatty changes, obscuring the parenchymal details. The intra hepatic biliary passages are not dilated. Portal vein is normal ~ 11.0 mm. No focal lesion is seen."
+        "The <b>Gall Bladder</b> is minimally distended (Non-fasting). The CBD appears normal. No evidence of calculi seen."
+        "The <b>Impression</b> must be a clinical synthesis: '1. Moderate Hepatomegaly with Grade II / III Fatty changes in liver with coarsening of echotexture. (Adv: LFT and US Guided Elastography correlation).'"
 
-        ### DOCUMENT STRUCTURE:
-        1. **Tone**: Objective, formal, and authoritative.
-        2. **Formatting**: Use HTML for `reportText`. 
-           - Start each finding with: `<p>The <b>Organ Name</b> is ...</p>` or `<b>Organ Name</b>: ...`
-           - Use `<p>` tags for each distinct section.
-        3. **Expansion**: Expand shorthand (e.g., 'liver big' -> 'The <b>Liver</b> is moderately enlarged in size, showing features of hepatomegaly.').
-        4. **Impression**: Mandatory concise, numbered list of the most significant findings. Include clinical recommendations (Adv:) if appropriate.
+        ### 📋 CORE MANDATES:
+        1. **Verbosity**: Do NOT give short answers. Expand every finding into 2-3 detailed sentences.
+        2. **Negative Findings**: Explicitly mention what is NORMAL (e.g., "No evidence of focal lesion, calculi, or ductal dilatation is seen").
+        3. **Anatomic Precision**: Reference echotexture, echogenicity, outlines, and measurements (~ 00 cm).
+        4. **Formatting**: Use `<p>` tags for each section and `<b>` for the Organ/Header.
 
-        ### JSON RESPONSE SCHEMA (Respond ONLY with JSON):
+        ### 📦 JSON RESPONSE (STRICTLY JSON ONLY):
         {{
             "patientData": {{ 
                 "patient_name": "Full Name",
-                "age": "e.g., 36 Yrs",
+                "age": "e.g., 45 Yrs",
                 "sex": "Male/Female",
-                "ref_doctor": "Referring Physician Name",
-                "date": "Date of Report",
-                "uhid": "UHID number",
-                "study": "{modality} WHOLE ABDOMEN" (or specific study mentioned)
+                "ref_doctor": "Dr. Name",
+                "date": "Date",
+                "uhid": "10XXXXXX",
+                "study": "{modality} WHOLE ABDOMEN" (or specific study)
             }},
-            "reportText": "<p>The <b>Liver</b> is...</p><p>The <b>Gall Bladder</b> is...</p>",
-            "impression": "1. Main Diagnostic Finding.\\n2. Secondary Finding."
+            "reportText": "<p>The <b>Liver</b> is... [verbose description]</p><p>The <b>Spleen</b> is... [verbose description]</p>",
+            "impression": "1. [Significant Finding]\\n2. [Second Finding]"
         }}
         """
 
