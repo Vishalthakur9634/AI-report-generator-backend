@@ -52,12 +52,10 @@ repo_id = "Qwen/Qwen2.5-72B-Instruct"
 
 def extract_json_from_text(text: str) -> dict:
     try:
-        md_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
-        if md_match:
-            return json.loads(md_match.group(1))
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
+        start = text.find('{')
+        end = text.rfind('}')
+        if start != -1 and end != -1:
+            return json.loads(text[start:end+1])
         return json.loads(text)
     except:
         return None
@@ -144,8 +142,11 @@ async def generate_report(request: ReportRequest):
             raise ValueError("LLM generated invalid JSON structure.")
             
     except Exception as e:
-        print(f"HuggingFace Processing error: {e}")
-        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+        error_msg = str(e)
+        print(f"HuggingFace Processing error: {error_msg}")
+        if "401" in error_msg or "unauthorized" in error_msg.lower() or "invalid token" in error_msg.lower():
+            raise HTTPException(status_code=401, detail="HuggingFace Token Expired or Invalid. Please update your API Token.")
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {error_msg}")
 
 @app.post("/api/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
