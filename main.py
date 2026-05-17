@@ -16,22 +16,15 @@ app = FastAPI(title="AI Radiology Report Generator")
 HF_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
 
-# Production CORS Configuration (Robust)
-origins = ["http://localhost:5173", "http://localhost:3000"]
-if FRONTEND_URL and FRONTEND_URL != "*":
-    clean_url = FRONTEND_URL.strip().rstrip("/")
-    origins.append(clean_url)
-    origins.append(clean_url.lower()) # Case-insensitive handle
-else:
-    origins = ["*"]
-
+# Explicit CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True if "*" not in origins else False,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def health_check():
@@ -108,7 +101,8 @@ async def generate_report(request: ReportRequest):
         - **CT/MRI**: Focus on Signal Intensity, Enhancement, and Volume.
         - **DOPPLER**: Focus on RI, PSV, Waveforms (Triphasic/Biphasic).
 
-        ### 🗳️ RESPONSE STRUCTURE (JSON ONLY):
+        ### 🗳️ RESPONSE STRUCTURE (STRICT JSON ONLY):
+        OUTPUT EXACTLY AND ONLY VALID JSON. DO NOT WRAP IN MARKDOWN OR CODE BLOCKS. NO PREAMBLE. NO POSTAMBLE.
         {{
             "patientData": {{ 
                 "patient_name": "Name", 
