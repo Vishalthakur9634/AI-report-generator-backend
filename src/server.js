@@ -10,8 +10,16 @@ dotenv.config();
 const app = express();
 
 // Middleware
+const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
 app.use(cors({
-  origin: (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, ''),
+  origin: function (origin, callback) {
+    // Allow if no origin (e.g. mobile apps, curl), or if it matches frontendUrl, or if it's a local Vite port
+    if (!origin || origin === frontendUrl || origin.startsWith('http://localhost:517')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
