@@ -54,7 +54,8 @@ export async function seedDefaultTemplate() {
       }
     }
 
-    const templatePath = path.resolve('../backend/test_template.docx');
+    // Use process.cwd() to resolve from the project root (where node src/server.js is run)
+    const templatePath = path.resolve(process.cwd(), 'test_template.docx');
     if (!fs.existsSync(templatePath)) {
       console.error(`Cannot find default template at ${templatePath} to seed.`);
       return;
