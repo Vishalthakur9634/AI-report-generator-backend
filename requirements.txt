@@ -9,3 +9,4 @@ python-jose[cryptography]
 openai
 docxtpl
 docx2pdf
+huggingface_hub
