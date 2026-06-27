@@ -1,6 +1,11 @@
 fastapi
 uvicorn
-huggingface_hub
 python-multipart
 python-dotenv
 pydantic
+motor
+passlib[bcrypt]
+python-jose[cryptography]
+openai
+docxtpl
+docx2pdf
