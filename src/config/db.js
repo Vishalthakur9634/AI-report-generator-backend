@@ -1,26 +1,23 @@
 import mongoose from 'mongoose';
 
-// We will store the global gridfs bucket here so we can access it from routes
-export let gfsBucket;
+let bucket;
 
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000, // Timeout after 10s if can't connect
-      socketTimeoutMS: 45000,          // Close socket if no response in 45s
-      maxPoolSize: 10,                 // Maintain up to 10 socket connections
-      tlsAllowInvalidCertificates: true // Allow invalid/self-signed certs (resolves local SSL/TLS chain issues)
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      tlsAllowInvalidCertificates: true
     });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
 
-    // Initialize GridFSBucket
-    gfsBucket = new mongoose.mongo.GridFSBucket(conn.connection.db, {
+    bucket = new mongoose.mongo.GridFSBucket(conn.connection.db, {
       bucketName: 'uploads'
     });
     console.log('GridFS initialized');
 
-    // Handle disconnection events gracefully
     mongoose.connection.on('disconnected', () => {
       console.warn('⚠️  MongoDB disconnected! Attempting to reconnect...');
     });
@@ -37,5 +34,5 @@ const connectDB = async () => {
   }
 };
 
+export const getGfsBucket = () => bucket;
 export default connectDB;
-

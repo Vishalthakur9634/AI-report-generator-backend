@@ -3,7 +3,7 @@ import multer from 'multer';
 import mongoose from 'mongoose';
 import { Readable } from 'stream';
 import PizZip from 'pizzip';
-import { gfsBucket } from '../config/db.js';
+import { getGfsBucket } from '../config/db.js';
 import Template from '../models/Template.js';
 import { seedDefaultTemplate } from '../services/seedService.js';
 
@@ -61,7 +61,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     // Convert buffer to readable stream and upload to GridFS
     const readableStream = Readable.from(req.file.buffer);
     
-    const uploadStream = gfsBucket.openUploadStream(req.file.originalname, {
+    const uploadStream = getGfsBucket().openUploadStream(req.file.originalname, {
       metadata: { contentType: req.file.mimetype }
     });
 
@@ -112,7 +112,7 @@ router.delete('/:id', async (req, res) => {
     if (!template) return res.status(404).json({ detail: 'Template not found' });
 
     // Delete from GridFS
-    await gfsBucket.delete(template.file_id);
+    await getGfsBucket().delete(template.file_id);
     await template.deleteOne();
 
     res.json({ message: 'Template deleted successfully' });

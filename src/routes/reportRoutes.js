@@ -3,7 +3,7 @@ import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { Readable } from 'stream';
 import mongoose from 'mongoose';
-import { gfsBucket } from '../config/db.js';
+import { getGfsBucket } from '../config/db.js';
 import Template from '../models/Template.js';
 import Report from '../models/Report.js';
 import { generateReportData } from '../services/aiService.js';
@@ -14,7 +14,7 @@ const router = express.Router();
 async function readGridFSFile(fileId) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    const downloadStream = gfsBucket.openDownloadStream(new mongoose.Types.ObjectId(fileId));
+    const downloadStream = getGfsBucket().openDownloadStream(new mongoose.Types.ObjectId(fileId));
     downloadStream.on('data', chunk => chunks.push(chunk));
     downloadStream.on('end', () => resolve(Buffer.concat(chunks)));
     downloadStream.on('error', reject);
@@ -25,7 +25,7 @@ async function readGridFSFile(fileId) {
 async function saveToGridFS(buffer, filename) {
   return new Promise((resolve, reject) => {
     const readableStream = Readable.from(buffer);
-    const uploadStream = gfsBucket.openUploadStream(filename, {
+    const uploadStream = getGfsBucket().openUploadStream(filename, {
       metadata: { contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
     });
     readableStream.pipe(uploadStream);

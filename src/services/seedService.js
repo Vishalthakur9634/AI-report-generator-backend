@@ -3,14 +3,14 @@ import path from 'path';
 import { Readable } from 'stream';
 import PizZip from 'pizzip';
 import mongoose from 'mongoose';
-import { gfsBucket } from '../config/db.js';
+import { getGfsBucket } from '../config/db.js';
 import Template from '../models/Template.js';
 
 // Helper: Read a GridFS file into a Buffer
 async function readGridFSFile(fileId) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    const downloadStream = gfsBucket.openDownloadStream(new mongoose.Types.ObjectId(fileId));
+    const downloadStream = getGfsBucket().openDownloadStream(new mongoose.Types.ObjectId(fileId));
     downloadStream.on('data', chunk => chunks.push(chunk));
     downloadStream.on('end', () => resolve(Buffer.concat(chunks)));
     downloadStream.on('error', reject);
@@ -31,7 +31,7 @@ export async function seedDefaultTemplate() {
       } catch (err) {
         console.warn('⚠️  Existing template is corrupt or empty. Cleaning up and re-seeding...', err.message);
         try {
-          await gfsBucket.delete(existing.file_id);
+          await getGfsBucket().delete(existing.file_id);
         } catch (e) {
           // File might not exist in GridFS
         }
@@ -48,7 +48,7 @@ export async function seedDefaultTemplate() {
       } catch (err) {
         console.warn(`⚠️ Removing corrupted template: ${temp.name} (${err.message})`);
         try {
-          await gfsBucket.delete(temp.file_id);
+          await getGfsBucket().delete(temp.file_id);
         } catch (e) {}
         await temp.deleteOne();
       }
@@ -94,7 +94,7 @@ export async function seedDefaultTemplate() {
 
     // Upload to GridFS
     const readableStream = Readable.from(fileBuffer);
-    const uploadStream = gfsBucket.openUploadStream('test_template.docx', {
+    const uploadStream = getGfsBucket().openUploadStream('test_template.docx', {
       metadata: { contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
     });
 
