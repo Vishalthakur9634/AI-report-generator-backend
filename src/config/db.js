@@ -34,5 +34,10 @@ const connectDB = async () => {
   }
 };
 
-export const getGfsBucket = () => bucket;
+export const getGfsBucket = () => {
+  if (!bucket) {
+    throw new Error("Database connection failed. Please check MONGODB_URI in Render Settings and ensure MongoDB Atlas IP Whitelist allows '0.0.0.0/0'.");
+  }
+  return bucket;
+};
 export default connectDB;
