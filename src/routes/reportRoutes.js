@@ -1,132 +1,114 @@
 import express from 'express';
-import PizZip from 'pizzip';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import Docxtemplater from 'docxtemplater';
-import { Readable } from 'stream';
-import mongoose from 'mongoose';
-import { getGfsBucket } from '../config/db.js';
-import Template from '../models/Template.js';
-import Report from '../models/Report.js';
+import PizZip from 'pizzip';
 import { generateReportData } from '../services/aiService.js';
 
 const router = express.Router();
 
-// Helper: Read a GridFS file into a Buffer
-async function readGridFSFile(fileId) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    const downloadStream = getGfsBucket().openDownloadStream(new mongoose.Types.ObjectId(fileId));
-    downloadStream.on('data', chunk => chunks.push(chunk));
-    downloadStream.on('end', () => resolve(Buffer.concat(chunks)));
-    downloadStream.on('error', reject);
-  });
-}
-
-// Helper: Save a Buffer to GridFS and return the new file ID
-async function saveToGridFS(buffer, filename) {
-  return new Promise((resolve, reject) => {
-    const readableStream = Readable.from(buffer);
-    const uploadStream = getGfsBucket().openUploadStream(filename, {
-      metadata: { contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
-    });
-    readableStream.pipe(uploadStream);
-    uploadStream.on('finish', () => resolve(uploadStream.id));
-    uploadStream.on('error', reject);
-  });
-}
+// In-memory cache for generated reports.
+// Maps a unique file_id (string) to a Buffer.
+const reportCache = new Map();
 
 // POST /api/reports/generate
 router.post('/generate', async (req, res) => {
-  const { template_id, transcript } = req.body;
-
-  if (!template_id || !transcript) {
-    return res.status(400).json({ detail: 'template_id and transcript are required' });
-  }
-
   try {
-    // 1. Fetch the template (with center_id check for security)
-    const templateDoc = await Template.findOne({
-      _id: template_id
-    });
-    if (!templateDoc) return res.status(404).json({ detail: 'Template not found' });
+    const { template_id, transcript } = req.body;
+    
+    if (!transcript) {
+      return res.status(400).json({ detail: 'Transcript is required' });
+    }
+    
+    // In stateless mode, we only support the hardcoded template.
+    if (template_id !== 'default-template') {
+      return res.status(400).json({ detail: 'Invalid template_id. Only default-template is supported.' });
+    }
 
-    // 2. Call HuggingFace AI to get structured JSON
-    console.log('Calling HuggingFace AI...');
-    const reportData = await generateReportData(
-      transcript,
-      templateDoc.detected_tags,
-      templateDoc.modality
-    );
-    console.log('AI data received:', reportData);
+    // 1. Read the default template from local disk
+    const templatePath = path.resolve(process.cwd(), 'test_template.docx');
+    if (!fs.existsSync(templatePath)) {
+      return res.status(500).json({ detail: 'Server Error: test_template.docx not found on disk.' });
+    }
+    const templateBuffer = fs.readFileSync(templatePath);
 
-    // 3. Fetch the .docx from GridFS
-    const docxBuffer = await readGridFSFile(templateDoc.file_id);
+    // Extract tags from template for AI processing
+    const detected_tags = [
+      'patient_id', 'patient_name', 'age', 'sex', 'ref_by', 'reg_date', 'report_date',
+      'liver_finding', 'gallbladder_finding', 'pancreas_finding', 'spleen_finding',
+      'kidneys_finding', 'urinary_bladder_finding', 'prostate_finding',
+      'additional_finding', 'impression'
+    ];
 
-    // 4. Use docxtemplater to inject AI data into the .docx
-    const zip = new PizZip(docxBuffer);
+    // 2. Generate JSON mapping via Groq AI
+    const mappedData = await generateReportData(transcript, detected_tags, 'USG');
+
+    // 3. Process DOCX with Docxtemplater
+    const zip = new PizZip(templateBuffer);
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
       linebreaks: true,
-      // Error handler — if a tag is missing in the data, fill with empty string
-      nullGetter: () => ''
-    });
-    doc.render(reportData);
-    const filledBuffer = doc.getZip().generate({ type: 'nodebuffer' });
-
-    // 5. Save the filled .docx to GridFS
-    const fileName = `Report_Guest_${Date.now()}.docx`;
-    const finalFileId = await saveToGridFS(filledBuffer, fileName);
-
-    // 6. Save the report audit record to MongoDB
-    const report = await Report.create({
-      template_id: templateDoc._id,
-      status: 'completed',
-      file_id: finalFileId,
-      ai_payload: reportData
+      nullGetter() { return ""; } // Replace undefined/null with empty string
     });
 
-    res.status(201).json({
+    doc.render(mappedData);
+    
+    // 4. Generate final Buffer
+    const generatedBuffer = doc.getZip().generate({
+      type: 'nodebuffer',
+      compression: 'DEFLATE'
+    });
+
+    // 5. Store in memory cache
+    const file_id = crypto.randomUUID();
+    reportCache.set(file_id, generatedBuffer);
+    
+    // Automatically delete from cache after 5 minutes to prevent memory leaks
+    setTimeout(() => {
+      reportCache.delete(file_id);
+    }, 5 * 60 * 1000);
+
+    res.json({
       message: 'Report generated successfully',
-      report_id: report._id,
-      file_id: finalFileId.toString(),
-      preview_data: reportData
+      report_id: 'in-memory',
+      file_id: file_id,
+      preview_data: mappedData
     });
 
   } catch (error) {
-    console.error('Report generation error:', error);
+    console.error('Report Generation Error:', error);
     if (error.message === 'GROQ_RATE_LIMIT_EXCEEDED') {
       return res.status(429).json({ detail: 'GROQ_RATE_LIMIT_EXCEEDED' });
     }
-    res.status(500).json({ detail: error.message });
+    res.status(500).json({ detail: error.message || 'Failed to generate report' });
   }
 });
 
-// GET /api/reports/download/:fileId  — Download the filled .docx
+// GET /api/reports/download/:fileId
 router.get('/download/:fileId', async (req, res) => {
   try {
-    const fileId = new mongoose.Types.ObjectId(req.params.fileId);
+    const { fileId } = req.params;
+    
+    if (!reportCache.has(fileId)) {
+      return res.status(404).json({ detail: 'Report expired or not found. Please generate again.' });
+    }
 
+    const buffer = reportCache.get(fileId);
+    
     res.set({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'Content-Disposition': `attachment; filename="report.docx"`
+      'Content-Disposition': 'attachment; filename="generated_report.docx"'
     });
-
-    const downloadStream = gfsBucket.openDownloadStream(fileId);
-    downloadStream.pipe(res);
-    downloadStream.on('error', () => res.status(404).json({ detail: 'File not found' }));
+    
+    res.send(buffer);
+    
+    // Once downloaded, we can clear it from memory to save RAM
+    reportCache.delete(fileId);
+    
   } catch (error) {
-    res.status(500).json({ detail: error.message });
-  }
-});
-
-// GET /api/reports — Fetch all reports for this center
-router.get('/', async (req, res) => {
-  try {
-    const reports = await Report.find({})
-      .sort({ createdAt: -1 })
-      .populate('template_id', 'name modality');
-    res.json(reports);
-  } catch (error) {
-    res.status(500).json({ detail: error.message });
+    console.error('Download error:', error);
+    res.status(500).json({ detail: 'Failed to download report' });
   }
 });
 

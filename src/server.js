@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import connectDB from './config/db.js';
+
 import templateRoutes from './routes/templateRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 
@@ -26,11 +26,7 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB, then start server
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-}).catch(err => {
-  console.error("Failed to connect to MongoDB", err);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT} (Database Disabled)`);
 });
+setInterval(() => {}, 1000 * 60 * 60); // Keep alive
