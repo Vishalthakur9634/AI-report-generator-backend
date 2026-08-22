@@ -19,7 +19,7 @@ function getGroq() {
 const MODELS = [
   'llama-3.3-70b-versatile',   // Best quality — Meta LLaMA 3.3 70B
   'llama-3.1-8b-instant',      // Fastest — Meta LLaMA 3.1 8B
-  'qwen/qwen3-32b',             // Backup — Qwen 32B (preview)
+  'mixtral-8x7b-32768',        // Backup — Mixtral
 ];
 
 /**
